@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Project CVFD</string>
+    <string name="predict">Predict</string>
+    <string name="authority">cure.medicine.find.cervical</string>
+</resources>
