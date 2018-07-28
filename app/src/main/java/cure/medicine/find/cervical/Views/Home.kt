@@ -17,6 +17,7 @@ import cure.medicine.find.cervical.ViewModels.PredictionViewModel
 import io.reactivex.Scheduler
 import io.reactivex.android.schedulers.AndroidSchedulers
 import kotlinx.android.synthetic.main.activity_home.*
+import org.jetbrains.anko.progressDialog
 import java.io.File
 import java.io.IOException
 
@@ -37,8 +38,7 @@ class Home : AppCompatActivity() {
     /**
      * Validates if user device has camera hardware.
      */
-    private fun validateCameraPresence(): Boolean
-            = packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)
+    private fun validateCameraPresence(): Boolean = packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)
 
     /**
      * Launches the camera
@@ -48,7 +48,7 @@ class Home : AppCompatActivity() {
         if (cameraIntent.resolveActivity(packageManager) != null) {
             var photoFile: File? = null
             try {
-              photoFile = imageStorageLocation()
+                photoFile = imageStorageLocation()
             } catch (error: IOException) {
                 toast("Failed to create photo file with error ${error.localizedMessage}")
             }
@@ -64,11 +64,23 @@ class Home : AppCompatActivity() {
     }
 
     /**
+     * Loads pictures from phone gallery
+     */
+    private fun loadPictures() {
+        val galleryIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        startActivityForResult(galleryIntent, KEYS.galleryId)
+    }
+
+    /**
      * Register listeners
      */
     private fun registerButtonListener() {
         scanImage.setOnClickListener {
             launchCamera()
+        }
+
+        loadPicture.setOnClickListener {
+            loadPictures()
         }
     }
 
@@ -101,14 +113,20 @@ class Home : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == KEYS.cameraId && resultCode == Activity.RESULT_OK) {
             predictableImage.setImageURI(Uri.parse(imageAbsolutePath))
-                predictionViewModel.predict(imageAbsolutePath).observeOn(AndroidSchedulers.mainThread())
-                        .subscribe({
-                    it?.let { resultsText.text = it }
-                },{
-                            print(it)
-                        })
+
+            val progressDialog = progressDialog("Loading...")
+            progressDialog.show()
+
+            predictionViewModel.predict(imageAbsolutePath).observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({
+                        it?.let { resultsText.text = it }
+                        progressDialog.dismiss()
+                    }, {
+                        print(it)
+                        progressDialog.dismiss()
+                    })
         } else {
-            toast("Failed to take pic")
+            toast("Failed to process picture")
         }
     }
 }
